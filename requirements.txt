@@ -1,0 +1,11 @@
+numpy
+scipy
+matplotlib
+pandas
+pyyaml
+tqdm
+imageio
+imageio-ffmpeg
+gymnasium
+stable-baselines3
+streamlit

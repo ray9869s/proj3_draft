@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Editors
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+logs/
+
+# Models and checkpoints
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.pkl
+*.joblib
+
+# Results and generated artifacts
+results/**/videos/*.mp4
+results/**/videos/*.gif
+results/**/figures/*.png
+results/**/figures/*.jpg
+results/**/figures/*.jpeg
+results/**/data/*.csv
+results/**/data/*.npz
+results/**/data/*.npy
+results/rl/logs/
+results/rl/models/
+
+# Keep empty result directories if .gitkeep files are used
+!results/**/.gitkeep
