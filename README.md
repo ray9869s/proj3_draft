@@ -1,6 +1,7 @@
 # Air-Jet Reinforcement Learning Project
 
-This project develops a Week-based simulation framework for air-jet assisted sorting.  
+This project develops a Week-based simulation framework for air-jet assisted sorting.
+
 The current implementation includes:
 
 1. Week 1: 2D point-mass air-jet trajectory simulation
@@ -62,28 +63,418 @@ project3/
 
 ---
 
-## 2. Environment Setup
+## 2. Environment Setup and Running the Project
 
-Create and activate a virtual environment.
+This project is designed to be run from the project root directory.
+
+Before running any command, move into the project folder:
+
+```bash
+cd project3
+```
+
+If your project folder has a different name, replace `project3` with the actual folder name.
+
+---
+
+## 2.1 macOS Setup
+
+### Step 1: Create a virtual environment
+
+```bash
+python3 -m venv .venv
+```
+
+### Step 2: Activate the virtual environment
+
+```bash
+source .venv/bin/activate
+```
+
+After activation, your terminal should show something like:
+
+```text
+(.venv) user@computer project3 %
+```
+
+### Step 3: Install required packages
+
+```bash
+pip install -r requirements.txt
+```
+
+### Step 4: Run the Week 1 Streamlit app
+
+```bash
+streamlit run scripts/app_week1_streamlit.py
+```
+
+### Step 5: Run the Week 2 Streamlit app
+
+```bash
+streamlit run scripts/app_week2_streamlit.py
+```
+
+### Step 6: Stop the Streamlit app
+
+In the terminal where Streamlit is running, press:
+
+```text
+Ctrl + C
+```
+
+---
+
+## 2.2 Windows Setup
+
+The following commands assume that Python is already installed and available from the terminal.
+
+Use either Command Prompt or PowerShell.
+
+### Step 1: Create a virtual environment
+
+```powershell
+python -m venv .venv
+```
+
+If `python` does not work, try:
+
+```powershell
+py -m venv .venv
+```
+
+### Step 2: Activate the virtual environment
+
+For PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+For Command Prompt:
+
+```cmd
+.venv\Scripts\activate.bat
+```
+
+After activation, your terminal should show something like:
+
+```text
+(.venv) C:\path\to\project3>
+```
+
+If PowerShell blocks activation because of execution policy, run:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+Then activate again:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+### Step 3: Install required packages
+
+```powershell
+pip install -r requirements.txt
+```
+
+### Step 4: Run the Week 1 Streamlit app
+
+```powershell
+streamlit run scripts/app_week1_streamlit.py
+```
+
+### Step 5: Run the Week 2 Streamlit app
+
+```powershell
+streamlit run scripts/app_week2_streamlit.py
+```
+
+### Step 6: Stop the Streamlit app
+
+In the terminal where Streamlit is running, press:
+
+```text
+Ctrl + C
+```
+
+---
+
+## 2.3 Linux Setup
+
+### Step 1: Create a virtual environment
+
+```bash
+python3 -m venv .venv
+```
+
+If `venv` is not installed, install it first.
+
+For Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install python3-venv
+```
+
+Then create the virtual environment again:
+
+```bash
+python3 -m venv .venv
+```
+
+### Step 2: Activate the virtual environment
+
+```bash
+source .venv/bin/activate
+```
+
+After activation, your terminal should show something like:
+
+```text
+(.venv) user@computer:~/project3$
+```
+
+### Step 3: Install required packages
+
+```bash
+pip install -r requirements.txt
+```
+
+### Step 4: Run the Week 1 Streamlit app
+
+```bash
+streamlit run scripts/app_week1_streamlit.py
+```
+
+### Step 5: Run the Week 2 Streamlit app
+
+```bash
+streamlit run scripts/app_week2_streamlit.py
+```
+
+### Step 6: Stop the Streamlit app
+
+In the terminal where Streamlit is running, press:
+
+```text
+Ctrl + C
+```
+
+---
+
+## 2.4 Common Run Commands
+
+Run Week 1 interactive simulator:
+
+```bash
+streamlit run scripts/app_week1_streamlit.py
+```
+
+Run Week 2 interactive simulator:
+
+```bash
+streamlit run scripts/app_week2_streamlit.py
+```
+
+Run the basic Week 1 script:
+
+```bash
+python scripts/run_week1_basic.py
+```
+
+Run the Week 1 sensitivity script:
+
+```bash
+python scripts/run_week1_sensitivity.py
+```
+
+Run the Week 2 demo script:
+
+```bash
+python scripts/run_week2_demo.py
+```
+
+Run the Week 2 analysis script:
+
+```bash
+python scripts/run_week2_analysis.py
+```
+
+---
+
+## 3. GitHub Usage Guide
+
+This section explains how to upload the project to GitHub and how team members can collaborate.
+
+---
+
+## 3.1 First-Time GitHub Upload
+
+These steps should be done by the person who first creates the GitHub repository.
+
+### Step 1: Check `.gitignore`
+
+Before uploading the project, make sure `.gitignore` excludes virtual environments, cache files, generated results, model checkpoints, and large files.
+
+Important files and folders that should usually not be uploaded:
+
+```text
+.venv/
+__pycache__/
+.DS_Store
+results/**/*.csv
+results/**/*.png
+results/**/*.mp4
+results/rl/models/
+```
+
+### Step 2: Initialize Git
+
+From the project root:
+
+```bash
+git init
+```
+
+Check the current file status:
+
+```bash
+git status
+```
+
+Make sure `.venv/` is not listed.
+
+### Step 3: Add files
+
+```bash
+git add .
+```
+
+Check the staged files:
+
+```bash
+git status
+```
+
+If `.venv/`, cache files, or large result files appear, stop and update `.gitignore` before committing.
+
+### Step 4: Create the first commit
+
+```bash
+git commit -m "Initial air-jet simulation project"
+```
+
+### Step 5: Create a new GitHub repository
+
+On GitHub:
+
+```text
+GitHub → New repository
+```
+
+Recommended settings:
+
+```text
+Repository name: air-jet-rl-project
+Visibility: Private
+Initialize with README: No
+Add .gitignore: No
+Choose a license: No
+```
+
+Do not initialize with a README because this project already has one.
+
+### Step 6: Connect local repository to GitHub
+
+Replace `USERNAME` and `REPOSITORY_NAME` with your GitHub username and repository name.
+
+```bash
+git remote add origin https://github.com/USERNAME/REPOSITORY_NAME.git
+git branch -M main
+git push -u origin main
+```
+
+Example:
+
+```bash
+git remote add origin https://github.com/myname/air-jet-rl-project.git
+git branch -M main
+git push -u origin main
+```
+
+---
+
+## 3.2 Adding Team Members
+
+If the repository is private, team members need access permission.
+
+On GitHub:
+
+```text
+Repository page → Settings → Collaborators → Add people
+```
+
+Invite team members using their GitHub usernames or email addresses.
+
+Each team member must accept the invitation before cloning the repository.
+
+---
+
+## 3.3 Team Member Setup
+
+Team members should clone the repository and set up their own virtual environment.
+
+### Step 1: Clone the repository
+
+```bash
+git clone https://github.com/USERNAME/REPOSITORY_NAME.git
+```
+
+Example:
+
+```bash
+git clone https://github.com/myname/air-jet-rl-project.git
+```
+
+### Step 2: Move into the project folder
+
+```bash
+cd REPOSITORY_NAME
+```
+
+Example:
+
+```bash
+cd air-jet-rl-project
+```
+
+### Step 3: Create and activate a virtual environment
+
+For macOS/Linux:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-Install required packages.
+For Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+### Step 4: Install packages
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the Week 1 Streamlit app.
-
-```bash
-streamlit run scripts/app_week1_streamlit.py
-```
-
-Run the Week 2 Streamlit app.
+### Step 5: Run the app
 
 ```bash
 streamlit run scripts/app_week2_streamlit.py
@@ -91,12 +482,185 @@ streamlit run scripts/app_week2_streamlit.py
 
 ---
 
-## 3. Week 1: 2D Air-Jet Simulator
+## 3.4 Basic Git Workflow
 
-Week 1 implements a simplified 2D air-jet sorting model.  
+Use the following workflow when making changes.
+
+### Step 1: Check current status
+
+```bash
+git status
+```
+
+### Step 2: Pull the latest version
+
+Before editing, get the newest version from GitHub:
+
+```bash
+git pull
+```
+
+### Step 3: Edit files
+
+Modify code, README, reports, or scripts.
+
+### Step 4: Check changes
+
+```bash
+git status
+```
+
+To see detailed changes:
+
+```bash
+git diff
+```
+
+### Step 5: Add changed files
+
+Add all changed files:
+
+```bash
+git add .
+```
+
+Or add a specific file:
+
+```bash
+git add scripts/app_week2_streamlit.py
+```
+
+### Step 6: Commit changes
+
+```bash
+git commit -m "Describe the change briefly"
+```
+
+Example:
+
+```bash
+git commit -m "Add reset buttons to Week 2 Streamlit app"
+```
+
+### Step 7: Push changes
+
+```bash
+git push
+```
+
+---
+
+## 3.5 Recommended Branch Workflow
+
+For team collaboration, avoid making all changes directly on `main`.
+
+Create a new branch for each feature or task.
+
+### Create a new branch
+
+```bash
+git checkout -b feature/week2-ui
+```
+
+### Work on files, then commit
+
+```bash
+git add .
+git commit -m "Improve Week 2 UI"
+```
+
+### Push the branch to GitHub
+
+```bash
+git push -u origin feature/week2-ui
+```
+
+### Open a Pull Request
+
+On GitHub:
+
+```text
+Repository page → Pull requests → New pull request
+```
+
+Review the changes and merge into `main` after approval.
+
+### Switch back to main
+
+```bash
+git checkout main
+```
+
+### Pull the updated main branch
+
+```bash
+git pull
+```
+
+---
+
+## 3.6 Suggested Branch Names
+
+Use clear branch names.
+
+```text
+feature/week1-simulator
+feature/week2-3d-model
+feature/week2-ui
+feature/rl-env
+feature/report
+fix/week2-landing-time
+fix/streamlit-reset
+docs/readme-update
+```
+
+---
+
+## 3.7 Suggested Commit Message Style
+
+Use short and clear commit messages.
+
+Examples:
+
+```text
+Add Week 2 Streamlit simulator
+Fix landing time for not-landed cases
+Add rod cylinder visualization
+Update README setup instructions
+Add section reset buttons
+Refactor air jet x-profile
+```
+
+---
+
+## 3.8 Files That Should Not Be Committed
+
+Do not commit:
+
+```text
+.venv/
+__pycache__/
+.DS_Store
+large result files
+temporary test files
+private API keys
+Streamlit secrets
+model checkpoints unless intentionally needed
+```
+
+Generated result files should usually remain local unless the team explicitly decides to share them.
+
+---
+
+## 4. Week 1: 2D Air-Jet Simulator
+
+Week 1 implements a simplified 2D air-jet sorting model.
+
 The object is treated as a point mass moving in the `x-z` plane under gravity, aerodynamic drag, and finite-duration air-jet force.
 
-### 3.1 Coordinate System
+---
+
+## 4.1 Coordinate System
 
 The Week 1 coordinate convention is:
 
@@ -111,7 +675,9 @@ The main quantity of interest is the landing position along the conveyor directi
 target_x_min <= landing_x <= target_x_max
 ```
 
-### 3.2 Physical Model
+---
+
+## 4.2 Physical Model
 
 The object is modeled using translational motion only.
 
@@ -131,7 +697,9 @@ t_on <= t <= t_on + duration
 
 The Week 1 model does not include object rotation, distributed surface force, or torque.
 
-### 3.3 Main Inputs
+---
+
+## 4.3 Main Inputs
 
 | Parameter | Meaning |
 |---|---|
@@ -145,7 +713,9 @@ The Week 1 model does not include object rotation, distributed surface force, or
 | `jet duration` | Time interval during which the jet remains active |
 | `target region` | Acceptable landing range |
 
-### 3.4 Week 1 Purpose
+---
+
+## 4.4 Week 1 Purpose
 
 The Week 1 simulator is mainly used to:
 
@@ -154,7 +724,9 @@ The Week 1 simulator is mainly used to:
 - provide a simple baseline before moving to the 3D rigid-body model
 - build intuition for later reinforcement-learning control variables
 
-### 3.5 Week 1 Limitations
+---
+
+## 4.5 Week 1 Limitations
 
 The Week 1 model is intentionally simple.
 
@@ -171,16 +743,17 @@ Despite these limitations, the Week 1 model is useful for quickly testing how ba
 
 ---
 
-## 4. Week 2: 3D Rigid-Body Air-Jet Simulator
+## 5. Week 2: 3D Rigid-Body Air-Jet Simulator
 
-Week 2 extends the model from 2D point-mass motion to 3D rigid-body motion.  
+Week 2 extends the model from 2D point-mass motion to 3D rigid-body motion.
+
 The object is represented by discrete surface points, allowing the simulator to compute both translational force and rotational torque.
 
 This simulator is intended as a baseline physical environment before building a reinforcement-learning controller.
 
 ---
 
-## 5. Week 2 Coordinate System
+## 5.1 Coordinate System
 
 The Week 2 coordinate convention is:
 
@@ -198,7 +771,7 @@ target_x_min <= landing_x <= target_x_max
 
 ---
 
-## 6. Week 2 Object Models
+## 5.2 Object Models
 
 The simulator currently supports three object types:
 
@@ -206,9 +779,10 @@ The simulator currently supports three object types:
 2. `rod`
 3. `irregular`
 
-### 6.1 Plate
+### Plate
 
-A plate is modeled as a thin rectangular object.  
+A plate is modeled as a thin rectangular object.
+
 It is represented by surface points on its top and bottom faces.
 
 This option is useful for modeling:
@@ -225,7 +799,7 @@ The user specifies:
 | `size_y` | Object width in the belt-width direction |
 | `size_z` | Object thickness |
 
-### 6.2 Rod
+### Rod
 
 A rod is modeled as a cylindrical object aligned with the body-frame `x` axis.
 
@@ -236,7 +810,8 @@ The user specifies:
 | `rod_length` | Cylinder length |
 | `rod_radius` | Cylinder radius |
 
-The rod is visualized as a cylinder in the 3D plot.  
+The rod is visualized as a cylinder in the 3D plot.
+
 Its inertia tensor is approximated using the solid-cylinder formula.
 
 ```text
@@ -244,16 +819,17 @@ I_xx = 1/2 m r^2
 I_yy = I_zz = 1/12 m (3r^2 + L^2)
 ```
 
-### 6.3 Irregular
+### Irregular
 
-An irregular object is represented by a random point cloud inside the given object dimensions.  
+An irregular object is represented by a random point cloud inside the given object dimensions.
+
 It is intended to approximate an asymmetric plastic flake or non-uniform particle.
 
 Unlike plate and rod objects, the irregular object is visualized as point cloud data rather than as a bounding box. This makes its asymmetric geometry easier to inspect.
 
 ---
 
-## 7. Week 2 Air-Jet Model
+## 5.3 Air-Jet Model
 
 The air jet is modeled as a finite spatial region near the end of the conveyor belt.
 
@@ -271,7 +847,7 @@ The user specifies:
 | `duration` | Jet activation duration |
 | `umax` | Maximum jet velocity |
 
-### 7.1 Finite X-Zone
+### Finite X-Zone
 
 The air jet exists only in the finite x-zone:
 
@@ -289,7 +865,7 @@ The x-profile is:
 
 This is intended to better approximate a real air jet, which is strongest near the center of the jet region and weaker near the boundaries.
 
-### 7.2 Gaussian Y-Z Profile
+### Gaussian Y-Z Profile
 
 In the `y-z` plane, the jet uses a Gaussian profile:
 
@@ -299,7 +875,7 @@ exp(-((y - y_center)^2 + (z - z_center)^2) / (2 sigma^2))
 
 This means that the jet is strongest near `(y_center, z_center)` and becomes weaker as the object surface moves away from that center.
 
-### 7.3 Jet Direction
+### Jet Direction
 
 The jet direction is controlled by `angle_deg`.
 
@@ -317,9 +893,10 @@ e_jet = [cos(theta), 0, sin(theta)]
 
 ---
 
-## 8. Distributed Surface Force Model
+## 5.4 Distributed Surface Force Model
 
-The object is represented by discrete surface points.  
+The object is represented by discrete surface points.
+
 Each surface point has:
 
 - a body-frame position
@@ -338,7 +915,7 @@ This is still a simplified aerodynamic model, but it is more physical than apply
 
 ---
 
-## 9. Rotation and Torque
+## 5.5 Rotation and Torque
 
 The simulator computes local jet forces at surface points and sums them to obtain:
 
@@ -357,7 +934,7 @@ The rigid-body orientation is updated using quaternions.
 
 ---
 
-## 10. Initial Orientation
+## 5.6 Initial Orientation
 
 The initial object orientation can be controlled by:
 
@@ -373,7 +950,7 @@ This is useful because the landing trajectory of a plate, rod, or irregular obje
 
 ---
 
-## 11. Landing Criterion
+## 5.7 Landing Criterion
 
 The simulation stops when the lowest surface point first reaches the landing plane:
 
@@ -381,7 +958,8 @@ The simulation stops when the lowest surface point first reaches the landing pla
 lowest_surface_z <= landing_z
 ```
 
-The model predicts the first-contact landing position.  
+The model predicts the first-contact landing position.
+
 It does not model what happens after contact, such as:
 
 - bouncing
@@ -394,7 +972,7 @@ This choice is intentional because the current goal is to predict the first land
 
 ---
 
-## 12. Outputs and Visualization
+## 5.8 Outputs and Visualization
 
 The Streamlit app provides:
 
@@ -414,7 +992,7 @@ The Streamlit app provides:
 
 ---
 
-## 13. Current Limitations
+## 5.9 Current Limitations
 
 This model is designed as a simplified baseline simulator, not as a high-fidelity CFD solver.
 
@@ -433,11 +1011,11 @@ Despite these limitations, the model is useful for exploring how object mass, sh
 
 ---
 
-## 14. Planned Reinforcement-Learning Stage
+## 6. Planned Reinforcement-Learning Stage
 
 After the Week 1 and Week 2 simulators are validated, the next stage is to define a reinforcement-learning environment.
 
-A future RL environment may include:
+A future RL environment may include the following components.
 
 ### State
 
@@ -474,7 +1052,7 @@ The goal of the RL stage is to learn a control policy that chooses air-jet param
 
 ---
 
-## 15. Suggested Validation Tests
+## 7. Suggested Validation Tests
 
 Before training an RL controller, the simulator should be checked using simple sanity tests.
 
@@ -497,12 +1075,13 @@ Before training an RL controller, the simulator should be checked using simple s
 
 ---
 
-## 16. Summary
+## 8. Summary
 
 This project currently provides a two-stage simulation workflow:
 
 1. Week 1 builds intuition using a simple 2D point-mass model.
 2. Week 2 extends the problem to 3D rigid-body motion with distributed surface force and torque.
 
-The current 3D simulator is not intended to be a high-fidelity aerodynamic solver.  
+The current 3D simulator is not intended to be a high-fidelity aerodynamic solver.
+
 Instead, it provides a controllable and interpretable baseline model that can later be converted into a reinforcement-learning environment.
