@@ -9,11 +9,13 @@ Run from the project root:
 from pathlib import Path
 import sys
 import json
+import tempfile
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+from matplotlib.animation import FuncAnimation, PillowWriter
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -102,6 +104,11 @@ DEFAULTS = {
     # Options
     "seed": 1,
     "show_surface_points": False,
+
+    # Animation
+    "animation_max_frames": 80,
+    "animation_fps": 12,
+    "animation_dpi": 100,
 }
 
 
@@ -169,6 +176,9 @@ SECTION_KEYS = {
     "options": [
         "seed",
         "show_surface_points",
+        "animation_max_frames",
+        "animation_fps",
+        "animation_dpi",
     ],
 }
 
@@ -187,9 +197,13 @@ def reset_keys(keys):
 
 
 def reset_all():
-    """Reset all user-controlled parameters."""
+    """Reset all user-controlled parameters and clear stored results."""
     for key, value in DEFAULTS.items():
         st.session_state[key] = value
+
+    for key in ["last_result", "last_parameter_json", "last_csv_data", "last_gif_bytes"]:
+        if key in st.session_state:
+            del st.session_state[key]
 
 
 initialize_session_defaults()
@@ -782,6 +796,32 @@ show_surface_points = st.sidebar.checkbox(
     key="show_surface_points",
 )
 
+st.sidebar.subheader("Animation Export")
+
+animation_max_frames = st.sidebar.slider(
+    "Maximum GIF frames",
+    min_value=20,
+    max_value=160,
+    step=10,
+    key="animation_max_frames",
+)
+
+animation_fps = st.sidebar.slider(
+    "GIF FPS",
+    min_value=5,
+    max_value=30,
+    step=1,
+    key="animation_fps",
+)
+
+animation_dpi = st.sidebar.slider(
+    "GIF DPI",
+    min_value=60,
+    max_value=160,
+    step=10,
+    key="animation_dpi",
+)
+
 run_button = main_run_button or sidebar_run_button
 
 
@@ -888,6 +928,11 @@ def make_parameter_dict(hit_offset):
             "x": [x_plot_min, x_plot_max],
             "y": [y_plot_min, y_plot_max],
             "z": [z_plot_min, z_plot_max],
+        },
+        "animation": {
+            "max_frames": animation_max_frames,
+            "fps": animation_fps,
+            "dpi": animation_dpi,
         },
         "coordinate_convention": {
             "x": "conveyor belt direction",
@@ -1416,6 +1461,367 @@ def plot_3d_trajectory(result, show_points=True, axis_limits=None):
     return fig
 
 
+def draw_animation_frame(ax, result, frame_index, axis_limits=None, show_points=False):
+    """Draw one animation frame on a 3D axis."""
+    position = result["position"]
+    quaternion = result["quaternion"]
+    obj = result["object"]
+    jet = result["jet"]
+    target = result.get("target")
+    sim = result.get("simulation")
+    time = result["time"]
+
+    current_time = float(time[frame_index])
+
+    # Jet valve ON/OFF status based on time condition
+    jet_is_on = jet.t_on <= current_time <= jet.t_on + jet.duration
+
+    trajectory_color = "tab:blue"
+    start_color = "tab:blue"
+    current_color = "tab:orange"
+    target_facecolor = "lightskyblue"
+    target_edgecolor = "tab:blue"
+
+    if jet_is_on:
+        jet_zone_facecolor = "limegreen"
+        jet_zone_edgecolor = "green"
+        jet_zone_alpha = 0.28
+        jet_status_text = "● JET ON"
+        jet_status_color = "green"
+    else:
+        jet_zone_facecolor = "lightcoral"
+        jet_zone_edgecolor = "red"
+        jet_zone_alpha = 0.18
+        jet_status_text = "● JET OFF"
+        jet_status_color = "red"
+
+    current_body_color = "tab:purple"
+    surface_point_color = "tab:green"
+
+    ax.clear()
+
+    # Give extra space for the legend outside the plot.
+    fig = ax.figure
+    fig.subplots_adjust(
+        left=0.03,
+        right=0.72,
+        bottom=0.08,
+        top=0.90,
+    )
+
+    x = position[: frame_index + 1, 0]
+    y = position[: frame_index + 1, 1]
+    z = position[: frame_index + 1, 2]
+
+    ax.plot(
+        x,
+        y,
+        z,
+        linewidth=2,
+        color=trajectory_color,
+        label="COM trajectory",
+    )
+
+    ax.scatter(
+        position[0, 0],
+        position[0, 1],
+        position[0, 2],
+        s=45,
+        marker="o",
+        color=start_color,
+        label="start",
+    )
+
+    ax.scatter(
+        position[frame_index, 0],
+        position[frame_index, 1],
+        position[frame_index, 2],
+        s=60,
+        marker="o",
+        color=current_color,
+        label="current COM",
+    )
+
+    if target is not None and sim is not None:
+        add_target_region_to_3d_axis(
+            ax=ax,
+            target=target,
+            landing_z=sim.landing_z,
+            axis_limits=axis_limits,
+            facecolor=target_facecolor,
+            edgecolor=target_edgecolor,
+            alpha=0.22,
+        )
+
+        add_jet_x_zone_to_3d_axis(
+            ax=ax,
+            jet=jet,
+            axis_limits=axis_limits,
+            landing_z=sim.landing_z,
+            facecolor=jet_zone_facecolor,
+            edgecolor=jet_zone_edgecolor,
+            alpha=jet_zone_alpha,
+        )
+
+    add_body_geometry_to_axis(
+        ax=ax,
+        obj=obj,
+        position=position[frame_index],
+        quaternion=quaternion[frame_index],
+        alpha=0.40,
+        facecolor=current_body_color,
+        edgecolor="black",
+    )
+
+    if show_points:
+        points_world, _, _ = transform_surface_points(
+            position=position[frame_index],
+            quaternion=quaternion[frame_index],
+            points_body=obj.surface_points_body,
+        )
+
+        ax.scatter(
+            points_world[:, 0],
+            points_world[:, 1],
+            points_world[:, 2],
+            s=7,
+            alpha=0.55,
+            color=surface_point_color,
+            label="surface points",
+        )
+
+    # Title and axis labels
+    ax.set_title(
+        f"3D Rigid-Body Motion, t = {current_time:.3f} s",
+        fontsize=12,
+        pad=14,
+    )
+
+    ax.set_xlabel(
+        "x: conveyor direction [m]",
+        fontsize=9,
+        labelpad=8,
+    )
+
+    ax.set_ylabel(
+        "y: belt width / jet position [m]",
+        fontsize=9,
+        labelpad=12,
+    )
+
+    ax.set_zlabel(
+        "z: vertical direction [m]",
+        fontsize=9,
+        labelpad=10,
+    )
+
+    ax.tick_params(axis="both", which="major", labelsize=8, pad=2)
+
+    # A fixed view angle helps reduce y/z label overlap.
+    ax.view_init(elev=24, azim=-58)
+
+    apply_3d_axis_limits(ax, axis_limits)
+
+    # -----------------------------------------------------------------
+    # Compact jet ON/OFF status overlay
+    # ON  = green
+    # OFF = red
+    # -----------------------------------------------------------------
+
+    ax.text2D(
+        0.015,
+        0.965,
+        jet_status_text,
+        transform=ax.transAxes,
+        fontsize=9,
+        fontweight="bold",
+        color=jet_status_color,
+        bbox={
+            "facecolor": "white",
+            "edgecolor": jet_status_color,
+            "boxstyle": "round,pad=0.18",
+            "alpha": 0.86,
+        },
+    )
+
+    ax.text2D(
+        0.015,
+        0.920,
+        f"t_on = {jet.t_on:.3f} s | duration = {jet.duration:.3f} s",
+        transform=ax.transAxes,
+        fontsize=7,
+        color="black",
+        bbox={
+            "facecolor": "white",
+            "edgecolor": "lightgray",
+            "boxstyle": "round,pad=0.16",
+            "alpha": 0.72,
+        },
+    )
+
+    legend_handles = [
+        Line2D(
+            [0],
+            [0],
+            color=trajectory_color,
+            linewidth=2,
+            label="COM trajectory",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="none",
+            markerfacecolor=start_color,
+            markeredgecolor=start_color,
+            markersize=6,
+            label="start",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="none",
+            markerfacecolor=current_color,
+            markeredgecolor=current_color,
+            markersize=7,
+            label="current COM",
+        ),
+        Patch(
+            facecolor=target_facecolor,
+            edgecolor=target_edgecolor,
+            alpha=0.22,
+            label="target landing region",
+        ),
+        Patch(
+            facecolor=jet_zone_facecolor,
+            edgecolor=jet_zone_edgecolor,
+            alpha=jet_zone_alpha,
+            label=f"air-jet x-zone ({'ON' if jet_is_on else 'OFF'})",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="none",
+            markerfacecolor=jet_status_color,
+            markeredgecolor=jet_status_color,
+            markersize=7,
+            linestyle="None",
+            label=f"jet status: {'ON' if jet_is_on else 'OFF'}",
+        ),
+        Patch(
+            facecolor=current_body_color,
+            edgecolor="black",
+            alpha=0.40,
+            label="current body",
+        ),
+    ]
+
+    if show_points:
+        legend_handles.append(
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor=surface_point_color,
+                markeredgecolor=surface_point_color,
+                markersize=4,
+                linestyle="None",
+                label="surface points",
+            )
+        )
+
+    # Put legend outside the 3D axes to avoid covering the trajectory.
+    ax.legend(
+        handles=legend_handles,
+        loc="upper left",
+        bbox_to_anchor=(1.02, 0.98),
+        borderaxespad=0.0,
+        fontsize=8,
+        framealpha=0.88,
+    )
+
+
+def create_3d_animation_gif(
+    result,
+    axis_limits,
+    max_frames,
+    fps,
+    dpi,
+    show_points=False,
+):
+    """
+    Create GIF animation bytes from a simulation result.
+
+    This function only creates the GIF in memory for preview/download.
+    It does NOT save the GIF permanently to the project folder.
+    """
+    position = result["position"]
+    n_steps = len(position)
+
+    if n_steps <= 1:
+        raise ValueError("Not enough trajectory points to create an animation.")
+
+    n_frames = int(min(max_frames, n_steps))
+    frame_indices = np.linspace(0, n_steps - 1, n_frames, dtype=int)
+    frame_indices = np.unique(frame_indices)
+
+    fig = plt.figure(figsize=(9.5, 6))
+    ax = fig.add_subplot(111, projection="3d")
+
+    def update(frame_index):
+        draw_animation_frame(
+            ax=ax,
+            result=result,
+            frame_index=int(frame_index),
+            axis_limits=axis_limits,
+            show_points=show_points,
+        )
+        return []
+
+    animation = FuncAnimation(
+        fig,
+        update,
+        frames=frame_indices,
+        interval=1000 / max(fps, 1),
+        blit=False,
+    )
+
+    # Use a temporary file only to generate GIF bytes.
+    # The final GIF is not saved to the project folder here.
+    with tempfile.NamedTemporaryFile(suffix=".gif", delete=False) as tmp_file:
+        temp_path = Path(tmp_file.name)
+
+    writer = PillowWriter(fps=fps)
+    animation.save(temp_path, writer=writer, dpi=dpi)
+
+    plt.close(fig)
+
+    gif_bytes = temp_path.read_bytes()
+
+    try:
+        temp_path.unlink()
+    except OSError:
+        pass
+
+    return gif_bytes
+
+
+def save_gif_to_project_folder(gif_bytes, filename="week2_3d_animation.gif"):
+    """
+    Save GIF bytes to the project results folder only when the user clicks Save.
+    """
+    output_dir = PROJECT_ROOT / "results" / "week2" / "videos"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_path = output_dir / filename
+    output_path.write_bytes(gif_bytes)
+
+    return output_path
+
+
 def plot_xy_landing_map(result, target, axis_limits=None):
     position = result["position"]
     jet = result["jet"]
@@ -1656,7 +2062,7 @@ def plot_force_breakdown_z(result):
 
 
 # ---------------------------------------------------------------------
-# Main simulation
+# Run simulation and store result
 # ---------------------------------------------------------------------
 
 if run_button:
@@ -1722,12 +2128,42 @@ if run_button:
         seed=seed,
     )
 
+    df = result_to_dataframe(result)
+    csv_data = df.to_csv(index=False).encode("utf-8")
+    parameter_dict = make_parameter_dict(hit_offset)
+    parameter_json = json.dumps(parameter_dict, indent=2)
+
+    st.session_state["last_result"] = result
+    st.session_state["last_hit_offset"] = hit_offset
+    st.session_state["last_dataframe"] = df
+    st.session_state["last_csv_data"] = csv_data
+    st.session_state["last_parameter_json"] = parameter_json
+
+    if "last_gif_bytes" in st.session_state:
+        del st.session_state["last_gif_bytes"]
+
+
+# ---------------------------------------------------------------------
+# Display result
+# ---------------------------------------------------------------------
+
+if "last_result" in st.session_state:
+    result = st.session_state["last_result"]
+    hit_offset = st.session_state["last_hit_offset"]
+    df = st.session_state["last_dataframe"]
+    csv_data = st.session_state["last_csv_data"]
+    parameter_json = st.session_state["last_parameter_json"]
+
     landing_position = result["landing_position"]
     landing_time = result["landing_time"]
     has_landed = result["has_landed"]
     final_position = result["final_position"]
     final_time = result["final_time"]
     success = result["success"]
+
+    obj = result["object"]
+    jet = result["jet"]
+    target = result["target"]
 
     col1, col2 = st.columns([2, 1])
 
@@ -1772,26 +2208,27 @@ if run_button:
         st.metric("Linear impulse |J| [N s]", f"{np.linalg.norm(result['jet_impulse']):.4e}")
         st.metric("Angular impulse |L| [N m s]", f"{np.linalg.norm(result['angular_impulse']):.4e}")
 
-        if has_landed and landing_time is not None and jet_t_on > landing_time:
+        if has_landed and landing_time is not None and jet.t_on > landing_time:
             st.warning(
                 "Jet activates after landing. Decrease t_on, increase initial height, "
                 "or increase conveyor speed."
             )
 
-        if hit_offset > 3.0 * sigma:
+        if hit_offset > 3.0 * jet.sigma:
             st.warning(
                 "The initial COM is far from the jet region relative to the y-z jet width. "
                 "The jet may barely interact with the object."
             )
 
         st.subheader("Object Summary")
+
         object_summary = {
             "object name": obj.name,
             "object type": obj.object_type,
             "number of surface points": int(obj.surface_points_body.shape[0]),
             "total area weight [m2]": float(np.sum(obj.area_weights)),
-            "mass [kg]": mass,
-            "Cd [-]": drag_coefficient,
+            "mass [kg]": obj.mass,
+            "Cd [-]": obj.drag_coefficient,
             "size_x [m]": obj.size_x,
             "size_y [m]": obj.size_y,
             "size_z [m]": obj.size_z,
@@ -1803,15 +2240,99 @@ if run_button:
 
         st.write(object_summary)
 
-        parameter_dict = make_parameter_dict(hit_offset)
-        parameter_json = json.dumps(parameter_dict, indent=2)
-
         st.download_button(
             label="Download parameters as JSON",
             data=parameter_json,
             file_name="week2_parameters.json",
             mime="application/json",
         )
+
+    st.subheader("Animation Export")
+
+    st.write(
+        """
+        Generate a GIF preview of the 3D rigid-body motion first.  
+        The GIF will be shown on this page before saving.  
+        Click **Save GIF to Project Folder** only if you want to save it locally.
+        """
+    )
+
+    col_anim_1, col_anim_2 = st.columns([1, 2])
+
+    with col_anim_1:
+        generate_gif_button = st.button(
+            "Generate GIF Preview",
+            type="primary",
+            key="generate_3d_gif_preview_button",
+        )
+
+    with col_anim_2:
+        st.caption(
+            f"Current settings: max frames = {animation_max_frames}, "
+            f"FPS = {animation_fps}, DPI = {animation_dpi}"
+        )
+
+    if generate_gif_button:
+        try:
+            with st.spinner("Generating GIF preview. This may take a moment..."):
+                gif_bytes = create_3d_animation_gif(
+                    result=result,
+                    axis_limits=axis_limits,
+                    max_frames=animation_max_frames,
+                    fps=animation_fps,
+                    dpi=animation_dpi,
+                    show_points=show_surface_points,
+                )
+
+            st.session_state["last_gif_bytes"] = gif_bytes
+
+            if "last_gif_path" in st.session_state:
+                del st.session_state["last_gif_path"]
+
+            st.success("GIF preview generated. Review it below before saving.")
+
+        except Exception as exc:
+            st.error(f"Failed to generate GIF preview: {exc}")
+
+    if "last_gif_bytes" in st.session_state:
+        st.subheader("GIF Preview")
+
+        st.image(
+            st.session_state["last_gif_bytes"],
+            caption="3D rigid-body motion preview",
+        )
+
+        col_save_1, col_save_2 = st.columns(2)
+
+        with col_save_1:
+            st.download_button(
+                label="Download GIF",
+                data=st.session_state["last_gif_bytes"],
+                file_name="week2_3d_animation.gif",
+                mime="image/gif",
+            )
+
+        with col_save_2:
+            save_gif_button = st.button(
+                "Save GIF to Project Folder",
+                key="save_3d_gif_to_project_folder_button",
+            )
+
+        if save_gif_button:
+            try:
+                gif_path = save_gif_to_project_folder(
+                    st.session_state["last_gif_bytes"],
+                    filename="week2_3d_animation.gif",
+                )
+
+                st.session_state["last_gif_path"] = str(gif_path)
+                st.success(f"GIF saved to: {gif_path}")
+
+            except Exception as exc:
+                st.error(f"Failed to save GIF: {exc}")
+
+    if "last_gif_path" in st.session_state:
+        st.info(f"Last saved GIF path: {st.session_state['last_gif_path']}")
 
     st.subheader("2D Projections")
 
@@ -1899,10 +2420,7 @@ if run_button:
 
     st.subheader("Trajectory Data")
 
-    df = result_to_dataframe(result)
     st.dataframe(df.head(30), use_container_width=True)
-
-    csv_data = df.to_csv(index=False).encode("utf-8")
 
     st.download_button(
         label="Download trajectory data as CSV",
@@ -1910,6 +2428,7 @@ if run_button:
         file_name="week2_trajectory.csv",
         mime="text/csv",
     )
+
 
 else:
     st.info("Adjust the sliders in the sidebar and click **Run 3D Simulation**.")
@@ -1938,6 +2457,11 @@ else:
                 "x": [-0.10, 1.50],
                 "y": [-0.50, 0.50],
                 "z": [0.00, 0.60],
+            },
+            "animation": {
+                "max frames": 80,
+                "fps": 12,
+                "dpi": 100,
             },
         }
     )
